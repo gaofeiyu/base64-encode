@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Base64-encode</title>
+	<style>
+		body {
+			width: 100%;
+			height: 100%;
+		}
+
+		#dropper {
+			position: fixed;
+			width: 100%;
+			height: 100%;
+		}
+
+		#dropper.hover {
+			background: rgba(3, 102, 214, .5);
+		}
+
+		#results {
+			position: relative;
+			width: 100%;
+		}
+	</style>
+</head>
+<body>
+	test
+	<div id="dropper"></div>
+	<div id="results"></div>
+	<script>
+		var localFileMapKey = 'base64-encoder';
+		var dropElement = document.getElementById('dropper');
+		var resultElement = document.getElementById('results');
+		var localStorage = window.localStorage || null;
+
+		renderFileList();
+
+		dropElement.ondragenter = function(e) {
+			dropElement.className = 'hover';
+			e.preventDefault();
+		}
+		
+		dropElement.ondragleave = function(e) {
+			dropElement.className = '';
+			e.preventDefault();
+		}
+		
+		dropElement.ondragover = function(e) {
+			e.preventDefault();
+		}
+
+		document.ondrop = function(e) {
+			var files = Array.prototype.slice.apply(e.dataTransfer.files, [0]);
+			for(var i = 0, len = files.length; i < len; i += 1) {
+				var file = files[i];
+				var reader = new FileReader();
+				reader.onload = function(e) {
+					var result = e.target.result;
+					showFileBase64(file.name, result);
+					pushLocalFileMapItem(file.name, result)
+				}
+				reader.readAsDataURL(file);
+			}
+			dropElement.className = '';
+			e.preventDefault();
+		}
+
+		function showFileBase64(fileName, fileBase64) {
+			var fileItemElement = document.createElement('div');
+			var fileNameElement = createFileNameElement(fileName);
+			var fileContentElement = createFileContentElement(fileBase64);
+			var removeItemElement = createRemoveItemElement(fileName, fileItemElement);
+
+			fileItemElement.appendChild(fileNameElement);
+			
+			// 如果是图片提供一个预览功能
+			if(/^data:image/.test(fileBase64)) {
+				var imgElement = createImgElement(fileBase64);
+				fileItemElement.appendChild(imgElement);
+			}
+
+			fileItemElement.appendChild(fileContentElement);
+			fileItemElement.appendChild(removeItemElement);
+			resultElement.appendChild(fileItemElement);
+
+		}
+
+		function createFileNameElement(value) {
+			var element = document.createElement('div');
+			element.innerText = value;
+			return element;
+		}
+
+		function createFileContentElement(value) {
+			var element = document.createElement('textarea');
+			element.value = value;
+			element.onclick = function() {
+				element.select();
+			}
+			return element;
+		}
+
+		function createImgElement(value) {
+			var element = document.createElement('img');
+			element.src = value;
+			return element;
+		}
+
+		function createRemoveItemElement(fileName, fileItemElement) {
+			var element = document.createElement('button');
+			element.innerText = 'x';
+			element.onclick = function() {
+				fileItemElement.remove();
+				removeLocalFileMapItem(fileName);
+			}
+			return element;
+		}
+
+		function getLocalFileMap() {
+			var result = {}
+			// 如果本地存储不可解则清空重新存储，有需要可以加个备份能力
+			try {
+				result = JSON.parse(localStorage.getItem(localFileMapKey)) || {};
+			} catch(err) {
+				// no code
+			}
+			return result;
+		}
+
+		function pushLocalFileMapItem(fileName, fileBase64) {
+			var fileMap = getLocalFileMap();
+			fileMap[fileName] = fileBase64;
+			localStorage.setItem(localFileMapKey, JSON.stringify(fileMap));
+		}
+
+		function removeLocalFileMapItem(fileName) {
+			var fileMap = getLocalFileMap();
+			delete(fileMap[fileName]);
+			localStorage.setItem(localFileMapKey, JSON.stringify(fileMap));
+		}
+
+		function renderFileList() {
+			var fileMap = getLocalFileMap();
+			for(fileName in fileMap) {
+				if(fileMap.hasOwnProperty(fileName)) {
+					showFileBase64(fileName, fileMap[fileName]);
+				}
+			}
+		}
+	</script>
+</body>
+</html>
